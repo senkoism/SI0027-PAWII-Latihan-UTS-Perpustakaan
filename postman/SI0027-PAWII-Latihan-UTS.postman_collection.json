@@ -1,0 +1,1229 @@
+{
+  "info": {
+    "name": "SI0027 PAW II - Latihan UTS - Buku Perpustakaan",
+    "description": "Koleksi pengujian otomatis Latihan UTS PAW II (RESTful API CRUD Buku Perpustakaan Kampus).\n\nJalankan folder berurutan dari atas ke bawah (Collection Runner atau Newman) dengan environment 'Latihan UTS - Local'. Request saling berantai lewat variabel environment (perpustakaanId, bukuId, ...). Data unik dibuat otomatis pada request 1.1 sehingga collection dapat dijalankan berulang kali.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Perpustakaan",
+      "item": [
+        {
+          "name": "1.1 Buat perpustakaan - sukses",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/perpustakaan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "perpustakaan"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"{{perpustakaanNama}}\",\n  \"lokasi\": \"Gedung A Lantai 1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Data unik per run supaya collection bisa dijalankan berulang kali",
+                  "const ts = Date.now();",
+                  "pm.environment.set(\"perpustakaanNama\", \"Perpustakaan Latihan \" + ts);",
+                  "const base = String(ts).slice(-10).padStart(10, \"0\");",
+                  "pm.environment.set(\"isbn1\", \"978\" + base);",
+                  "pm.environment.set(\"isbn2\", \"978\" + String((Number(base) + 1) % 10000000000).padStart(10, \"0\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Perpustakaan tersimpan\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"_id\");",
+                  "  pm.expect(body.nama).to.eql(pm.environment.get(\"perpustakaanNama\"));",
+                  "  pm.environment.set(\"perpustakaanId\", body._id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Buat perpustakaan - nama duplikat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/perpustakaan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "perpustakaan"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"{{perpustakaanNama}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Daftar perpustakaan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/perpustakaan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "perpustakaan"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Berupa array dan memuat perpustakaan yang baru dibuat\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  const ids = body.map(function (k) { return k._id; });",
+                  "  pm.expect(ids).to.include(pm.environment.get(\"perpustakaanId\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Buku - Validasi",
+      "item": [
+        {
+          "name": "2.1 Buat buku - judul kosong",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"\",\n  \"isbn\": \"{{isbn1}}\",\n  \"pengarang\": [\n    \"Budi Santoso\",\n    \"Siti Aminah\"\n  ],\n  \"detail\": {\n    \"halaman\": 320,\n    \"edisi\": 2\n  },\n  \"stok\": 5,\n  \"perpustakaanId\": \"{{perpustakaanId}}\",\n  \"tersedia\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Buat buku - format ISBN salah",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"ISBN Salah\",\n  \"isbn\": \"12345\",\n  \"pengarang\": [\n    \"Budi Santoso\",\n    \"Siti Aminah\"\n  ],\n  \"detail\": {\n    \"halaman\": 320,\n    \"edisi\": 2\n  },\n  \"stok\": 5,\n  \"perpustakaanId\": \"{{perpustakaanId}}\",\n  \"tersedia\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Buat buku - stok negatif",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Stok Negatif\",\n  \"isbn\": \"{{isbn1}}\",\n  \"pengarang\": [\n    \"Budi Santoso\",\n    \"Siti Aminah\"\n  ],\n  \"detail\": {\n    \"halaman\": 320,\n    \"edisi\": 2\n  },\n  \"stok\": -5,\n  \"perpustakaanId\": \"{{perpustakaanId}}\",\n  \"tersedia\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Buat buku - pengarang kosong",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Tanpa Pengarang\",\n  \"isbn\": \"{{isbn1}}\",\n  \"pengarang\": [],\n  \"detail\": {\n    \"halaman\": 320,\n    \"edisi\": 2\n  },\n  \"stok\": 5,\n  \"perpustakaanId\": \"{{perpustakaanId}}\",\n  \"tersedia\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Buat buku - jumlah halaman di luar rentang",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Halaman Salah\",\n  \"isbn\": \"{{isbn1}}\",\n  \"pengarang\": [\n    \"Budi Santoso\",\n    \"Siti Aminah\"\n  ],\n  \"detail\": {\n    \"halaman\": 20000,\n    \"edisi\": 1\n  },\n  \"stok\": 5,\n  \"perpustakaanId\": \"{{perpustakaanId}}\",\n  \"tersedia\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Buat buku - format perpustakaanId salah",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Perpustakaan Salah\",\n  \"isbn\": \"{{isbn1}}\",\n  \"pengarang\": [\n    \"Budi Santoso\",\n    \"Siti Aminah\"\n  ],\n  \"detail\": {\n    \"halaman\": 320,\n    \"edisi\": 2\n  },\n  \"stok\": 5,\n  \"perpustakaanId\": \"bukan-objectid\",\n  \"tersedia\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Buku - CRUD",
+      "item": [
+        {
+          "name": "3.1 Buat buku #1 - sukses",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Pemrograman Web dengan Express\",\n  \"isbn\": \"{{isbn1}}\",\n  \"pengarang\": [\n    \"Budi Santoso\",\n    \"Siti Aminah\"\n  ],\n  \"detail\": {\n    \"halaman\": 320,\n    \"edisi\": 2\n  },\n  \"stok\": 5,\n  \"perpustakaanId\": \"{{perpustakaanId}}\",\n  \"tersedia\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Buku tersimpan lengkap (embedded & referencing)\", function () {",
+                  "  const m = pm.response.json();",
+                  "  pm.expect(m).to.have.property(\"_id\");",
+                  "  pm.expect(m.judul).to.eql(\"Pemrograman Web dengan Express\");",
+                  "  pm.expect(m.isbn).to.eql(pm.environment.get(\"isbn1\"));",
+                  "  pm.expect(m.pengarang).to.eql([\"Budi Santoso\", \"Siti Aminah\"]);",
+                  "  pm.expect(m.detail).to.include({ halaman: 320, edisi: 2 });",
+                  "  pm.expect(m.perpustakaanId).to.eql(pm.environment.get(\"perpustakaanId\"));",
+                  "  pm.expect(m.stok).to.eql(5);",
+                  "  pm.expect(m.tersedia).to.eql(true);",
+                  "  pm.environment.set(\"bukuId\", m._id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Buat buku #2 - sukses",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Basis Data NoSQL\",\n  \"isbn\": \"{{isbn2}}\",\n  \"pengarang\": [\n    \"Rina Wijaya\"\n  ],\n  \"detail\": {\n    \"halaman\": 210,\n    \"edisi\": 1\n  },\n  \"stok\": 8,\n  \"perpustakaanId\": \"{{perpustakaanId}}\",\n  \"tersedia\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Buku #2 tersimpan\", function () {",
+                  "  const m = pm.response.json();",
+                  "  pm.expect(m.judul).to.eql(\"Basis Data NoSQL\");",
+                  "  pm.environment.set(\"bukuId2\", m._id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Buat buku - ISBN duplikat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Nama Lain\",\n  \"isbn\": \"{{isbn1}}\",\n  \"pengarang\": [\n    \"Budi Santoso\",\n    \"Siti Aminah\"\n  ],\n  \"detail\": {\n    \"halaman\": 320,\n    \"edisi\": 2\n  },\n  \"stok\": 5,\n  \"perpustakaanId\": \"{{perpustakaanId}}\",\n  \"tersedia\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Detail buku - sukses (perpustakaan ter-populate)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku/{{bukuId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "{{bukuId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Detail buku & perpustakaanId ter-populate\", function () {",
+                  "  const m = pm.response.json();",
+                  "  pm.expect(m._id).to.eql(pm.environment.get(\"bukuId\"));",
+                  "  pm.expect(m.perpustakaanId).to.be.an(\"object\");",
+                  "  pm.expect(m.perpustakaanId.nama).to.eql(pm.environment.get(\"perpustakaanNama\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.5 Detail buku - format ID tidak valid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku/id-ngawur",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "id-ngawur"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.6 Detail buku - ID tidak ditemukan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku/000000000000000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "000000000000000000000000"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.7 Update buku - sukses",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku/{{bukuId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "{{bukuId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stok\": 3,\n  \"tersedia\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Stok & ketersediaan berubah, data lain tetap\", function () {",
+                  "  const m = pm.response.json();",
+                  "  pm.expect(m.stok).to.eql(3);",
+                  "  pm.expect(m.tersedia).to.eql(false);",
+                  "  pm.expect(m.judul).to.eql(\"Pemrograman Web dengan Express\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.8 Update buku - validasi stok negatif",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku/{{bukuId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "{{bukuId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stok\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.9 Update buku - ID tidak ditemukan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buku/000000000000000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "000000000000000000000000"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stok\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Buku - Filter, Sorting, Pagination & Projection",
+      "item": [
+        {
+          "name": "4.1 Daftar buku - nilai default",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Bentuk respons { data, page, limit, total }\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.have.all.keys(\"data\", \"page\", \"limit\", \"total\");",
+                  "  pm.expect(b.data).to.be.an('array');",
+                  "  pm.expect(b.page).to.eql(1);",
+                  "  pm.expect(b.limit).to.eql(10);",
+                  "  pm.expect(b.total).to.be.at.least(2);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 Filter berdasarkan perpustakaanId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku?perpustakaanId={{perpustakaanId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ],
+              "query": [
+                {
+                  "key": "perpustakaanId",
+                  "value": "{{perpustakaanId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Hanya buku pada perpustakaan tsb (total = 2)\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.total).to.eql(2);",
+                  "  pm.expect(b.data).to.have.lengthOf(2);",
+                  "  b.data.forEach(function (x) {",
+                  "    pm.expect(x.perpustakaanId._id).to.eql(pm.environment.get(\"perpustakaanId\"));",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 Sorting ascending berdasarkan judul",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku?perpustakaanId={{perpustakaanId}}&sort=judul",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ],
+              "query": [
+                {
+                  "key": "perpustakaanId",
+                  "value": "{{perpustakaanId}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "judul"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Urutan A-Z: Basis Data lebih dulu dari Pemrograman Web\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.data[0]._id).to.eql(pm.environment.get(\"bukuId2\"));",
+                  "  pm.expect(b.data[1]._id).to.eql(pm.environment.get(\"bukuId\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 Pagination - halaman 2, limit 1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku?perpustakaanId={{perpustakaanId}}&sort=judul&page=2&limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ],
+              "query": [
+                {
+                  "key": "perpustakaanId",
+                  "value": "{{perpustakaanId}}"
+                },
+                {
+                  "key": "sort",
+                  "value": "judul"
+                },
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Halaman 2 berisi 1 data (buku #1), total tetap 2\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.page).to.eql(2);",
+                  "  pm.expect(b.limit).to.eql(1);",
+                  "  pm.expect(b.total).to.eql(2);",
+                  "  pm.expect(b.data).to.have.lengthOf(1);",
+                  "  pm.expect(b.data[0]._id).to.eql(pm.environment.get(\"bukuId\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.5 Pagination - limit dibatasi maksimum 100",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku?limit=1000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1000"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"limit dikunci 100\", function () {",
+                  "  pm.expect(pm.response.json().limit).to.eql(100);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.6 Projection - hanya judul & isbn",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku?perpustakaanId={{perpustakaanId}}&fields=judul,isbn",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku"
+              ],
+              "query": [
+                {
+                  "key": "perpustakaanId",
+                  "value": "{{perpustakaanId}}"
+                },
+                {
+                  "key": "fields",
+                  "value": "judul,isbn"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Field lain tidak ikut dikirim\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.data).to.have.lengthOf(2);",
+                  "  b.data.forEach(function (x) {",
+                  "    pm.expect(x).to.have.property(\"judul\");",
+                  "    pm.expect(x).to.have.property(\"isbn\");",
+                  "    pm.expect(x).to.not.have.property(\"stok\");",
+                  "    pm.expect(x).to.not.have.property(\"pengarang\");",
+                  "    pm.expect(x).to.not.have.property(\"detail\");",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Buku - Hapus",
+      "item": [
+        {
+          "name": "5.1 Hapus buku #1 - sukses",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku/{{bukuId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "{{bukuId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 204\", function () { pm.response.to.have.status(204); });",
+                  "pm.test(\"Body kosong\", function () { pm.expect(pm.response.text()).to.be.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 Detail buku yang sudah dihapus",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku/{{bukuId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "{{bukuId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 Hapus buku - ID tidak ditemukan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku/000000000000000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "000000000000000000000000"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Body memuat properti message\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"message\");",
+                  "  pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.4 Hapus buku #2 (bersih-bersih)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buku/{{bukuId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buku",
+                "{{bukuId2}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code 204\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
