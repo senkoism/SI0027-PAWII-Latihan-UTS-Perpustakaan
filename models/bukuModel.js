@@ -1,24 +1,68 @@
-// TODO A: Rancang Schema & Model Buku sesuai tabel skema pada README.md
-//
-// Ketentuan:
-//   judul          String, wajib diisi, spasi di awal/akhir dibuang
-//   isbn           String, wajib, UNIK, tepat 13 digit angka (contoh "9786021234567")
-//   pengarang      Array of String (EMBEDDED), minimal 1 pengarang
-//   detail         Subdocument (EMBEDDED, tanpa _id sendiri):
-//                    halaman Number, wajib, 1 s.d. 10000
-//                    edisi   Number, minimal 1, default 1
-//   stok           Number, wajib, tidak boleh negatif
-//   perpustakaanId ObjectId (REFERENCING ke model "Perpustakaan"), wajib
-//   tersedia       Boolean, default true
-//   createdAt      Date, default waktu saat ini
-//
-// Petunjuk: lihat models/perpustakaanModel.js sebagai contoh sintaks dasar,
-// dan materi Pertemuan 9-10 (embedding vs referencing).
-
 const mongoose = require("mongoose");
 
-// TODO A1: buat schema subdocument detail
-// TODO A2: buat bukuSchema
-// TODO A3: export model dengan nama "Buku"
+// Detail subdocument schema (embedded, tanpa _id sendiri)
+const detailSchema = new mongoose.Schema(
+  {
+    halaman: {
+      type: Number,
+      required: true,
+      min: [1, "Halaman minimal 1"],
+      max: [10000, "Halaman maksimal 10000"],
+    },
+    edisi: {
+      type: Number,
+      min: [1, "Edisi minimal 1"],
+      default: 1,
+    },
+  },
+  { _id: false }
+);
 
-module.exports = {};
+// Schema Buku
+const bukuSchema = new mongoose.Schema({
+  judul: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  isbn: {
+    type: String,
+    required: true,
+    unique: true,
+    match: [/^\d{13}$/, "ISBN harus tepat 13 digit angka"],
+  },
+  pengarang: {
+    type: [String],
+    required: true,
+    validate: {
+      validator: function (v) {
+        return Array.isArray(v) && v.length > 0;
+      },
+      message: "Minimal 1 pengarang",
+    },
+  },
+  detail: {
+    type: detailSchema,
+    required: true,
+  },
+  stok: {
+    type: Number,
+    required: true,
+    min: [0, "Stok tidak boleh negatif"],
+  },
+  perpustakaanId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Perpustakaan",
+    required: true,
+  },
+  tersedia: {
+    type: Boolean,
+    default: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+module.exports = mongoose.model("Buku", bukuSchema);

@@ -12,16 +12,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const perpustakaanRoutes = require("./routes/perpustakaanRoutes");
-// TODO C2: require route buku dari ./routes/bukuRoutes
-// TODO D2: require middleware errorHandler dari ./middlewares/errorHandler
+const bukuRoutes = require("./routes/bukuRoutes");
+const errorHandler = require("./middlewares/errorHandler");
 
 app.use(cors());
 app.use(express.json());
 
 app.use("/perpustakaan", perpustakaanRoutes);
-// TODO C3: daftarkan route buku pada path "/buku"
+app.use("/buku", bukuRoutes);
 
-// TODO D3: daftarkan errorHandler sebagai middleware PALING AKHIR (setelah semua route)
+app.use(errorHandler);
 
 mongoose
   .connect(process.env.MONGODB_URI)
