@@ -104,6 +104,8 @@ npm install
 cp .env.example .env   # isi MONGODB_URI
 npm start
 # server berjalan di http://localhost:3000
+# jika belum ada newman npm i newman
+npm run test:api
 ```
 
 > Jangan pernah meng-commit file `.env` (sudah diabaikan oleh `.gitignore`).
